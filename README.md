@@ -2,7 +2,7 @@
 ![GitHub Stars](https://img.shields.io/github/stars/kslt/maintenance-mode-on-website)
 ![GitHub Forks](https://img.shields.io/github/forks/kslt/maintenance-mode-on-website)
 <h1>✨ GitHub repo uploader/updater ✨</h1>
-A script/program to update your GitHub repo from a Linux/Ubuntu Server. 
+A script/program to update your GitHub repo from a Linux/Ubuntu Server.<br>
 THANKS TO:
 A had a big help from Open AIs ChatGPT in the making of this project.
 
