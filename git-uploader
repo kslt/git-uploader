@@ -6,63 +6,164 @@ YELLOW="\e[0;33m"
 RESET="\e[0m"
 
 echo "=============================="
-echo " Git uploader – lugn & enkel uppladdning av uppdateringar till GitHub 😄"
+echo " Git uploader – smart & enkel hantering (v2.0) 😄"
 echo "=============================="
 echo
 
-if [ ! -d ".git" ]; then
-  echo "❌ Detta är inte ett Git-repo."
-  echo "   Gå till rätt mapp och försök igen."
-  exit 1
-fi
+echo -e "${YELLOW}➡️  Vill du skapa ett nytt repo eller uppdatera ett befintligt? (ny/befintlig): ${RESET}"
+read REPOCHOICE
 
-echo -e "${UNDERLINE}📊 Git status:${RESET}"
-git status
-echo
+create_gitignore() {
+    echo "➡️  Förbereder .gitignore..."
+    if [ -f "package.json" ]; then
+        TYPE="Node.js"
+        cat > .gitignore <<EOL
+# Node.js
+node_modules/
+npm-debug.log
+.env
+EOL
+    elif [ -f "requirements.txt" ] || ls *.py 1> /dev/null 2>&1; then
+        TYPE="Python"
+        cat > .gitignore <<EOL
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.env
+EOL
+    elif ls *.php 1> /dev/null 2>&1; then
+        TYPE="PHP"
+        cat > .gitignore <<EOL
+# PHP
+vendor/
+*.log
+.env
+EOL
+    else
+        TYPE="Allmänt"
+        cat > .gitignore <<EOL
+# Allmänt
+*.log
+*.tmp
+.env
+EOL
+    fi
+    echo "✅ .gitignore skapad för $TYPE-projekt (inkluderar alltid .env)."
+}
 
-echo "------------------------------"
-echo -e "${YELLOW}➡️  Vill du lägga till alla ändringar? (j/n): ${RESET}"
-read ADD
-if [[ "$ADD" =~ ^[Jj]$ ]]; then
-  git add .
-  echo "✅ Ändringar tillagda."
+set_branch_if_missing() {
+    CURRENT_BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null)
+    if [ -z "$CURRENT_BRANCH" ]; then
+        read -p "💡 Vill du använda 'main' eller 'master' som huvudbranch? (main/master): " BRANCH
+        BRANCH=${BRANCH:-main}
+        git branch -M $BRANCH
+        CURRENT_BRANCH=$BRANCH
+    fi
+}
+
+add_with_preview() {
+    echo "📄 Filer som ändrats sedan senaste commit:"
+    git status --short
+    echo
+    echo -e "${YELLOW}➡️  Vill du fortsätta och lägga till alla dessa filer? (j/n): ${RESET}"
+    read CONFIRM_ADD
+    if [[ "$CONFIRM_ADD" =~ ^[Jj]$ ]]; then
+        git add .
+        echo "✅ Ändringar tillagda."
+    else
+        echo "⏭️  Hoppar över git add."
+    fi
+    echo
+}
+
+if [[ "$REPOCHOICE" =~ ^[Nn]y$ ]]; then
+    # Skapa nytt repo
+    if [ -d ".git" ]; then
+        echo "⚠️  Git-repo redan existerar här!"
+    else
+        git init
+        echo "✅ Git-repo initierat."
+
+        create_gitignore
+
+        # Första commit
+        git add .
+        git commit -m "Första commit"
+        echo "✅ Första commit skapad."
+
+        # Fjärrrepo
+        echo "➡️  Vill du lägga till ett fjärrrepo på GitHub? (j/n): "
+        read REMOTE
+        if [[ "$REMOTE" =~ ^[Jj]$ ]]; then
+            read -p "🔗 Ange URL till GitHub-repo: " REMOTEURL
+            git remote add origin $REMOTEURL
+
+            set_branch_if_missing
+
+            git push -u origin $CURRENT_BRANCH
+            echo "✅ Push till GitHub klar."
+        fi
+    fi
 else
-  echo "⏭️  Hoppar över git add."
-fi
-echo
+    # Uppdatera befintligt repo
+    if [ ! -d ".git" ]; then
+        echo "❌ Detta är inte ett Git-repo."
+        exit 1
+    fi
 
-echo "------------------------------"
-echo -e "${YELLOW}➡️  Vill du skapa en commit? (j/n): ${RESET}"
-read COMMIT
-if [[ "$COMMIT" =~ ^[Jj]$ ]]; then
-  read -p "📝 Commit-meddelande: " MESSAGE
-  git commit -m "$MESSAGE"
-else
-  echo "⏭️  Ingen commit skapad."
-fi
-echo
+    echo -e "${UNDERLINE}📊 Git status:${RESET}"
+    git status
+    echo
 
-echo "------------------------------"
-echo -e "${YELLOW}➡️  Vill du pusha till GitHub nu? (j/n): ${RESET}"
-read PUSH
-if [[ "$PUSH" =~ ^[Jj]$ ]]; then
-  git push
-else
-  echo "⏭️  Push hoppades över."
-fi
-echo
+    echo "------------------------------"
+    echo -e "${YELLOW}➡️  Vill du lägga till alla ändringar? (j/n): ${RESET}"
+    read ADD
+    if [[ "$ADD" =~ ^[Jj]$ ]]; then
+        add_with_preview
+    else
+        echo "⏭️  Hoppar över git add."
+    fi
 
-echo "------------------------------"
-echo -e "${YELLOW}➡️  Vill du göra git pull (hämta senaste)? (j/n): ${RESET}"
-read PULL
-if [[ "$PULL" =~ ^[Jj]$ ]]; then
-  git pull
-else
-  echo "⏭️  Ingen pull gjord."
-fi
-echo
+    echo "------------------------------"
+    echo -e "${YELLOW}➡️  Vill du skapa en commit? (j/n): ${RESET}"
+    read COMMIT
+    if [[ "$COMMIT" =~ ^[Jj]$ ]]; then
+        read -p "📝 Commit-meddelande: " MESSAGE
+        git commit -m "$MESSAGE"
+        echo "✅ Commit skapad."
+    else
+        echo "⏭️  Ingen commit skapad."
+    fi
+    echo
 
-echo "------------------------------"
-echo -e "${GREEN}🎉 Klart! Git-status nu:${RESET}"
-git status
-echo
+    echo "------------------------------"
+    echo -e "${YELLOW}➡️  Vill du pusha till GitHub nu? (j/n): ${RESET}"
+    read PUSH
+    if [[ "$PUSH" =~ ^[Jj]$ ]]; then
+        set_branch_if_missing
+        git push -u origin $CURRENT_BRANCH
+        echo "✅ Push klar."
+    else
+        echo "⏭️  Push hoppades över."
+    fi
+    echo
+
+    echo "------------------------------"
+    echo -e "${YELLOW}➡️  Vill du göra git pull (hämta senaste)? (j/n): ${RESET}"
+    read PULL
+    if [[ "$PULL" =~ ^[Jj]$ ]]; then
+        git pull
+        echo "✅ Pull klar."
+    else
+        echo "⏭️  Ingen pull gjord."
+    fi
+    echo
+
+    echo "------------------------------"
+    echo -e "${GREEN}🎉 Klart! Git-status nu:${RESET}"
+    git status
+    echo
+fi
