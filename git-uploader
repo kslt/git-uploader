@@ -6,7 +6,7 @@ YELLOW="\e[0;33m"
 RESET="\e[0m"
 
 echo "=============================="
-echo " Git uploader – smart & enkel hantering (v2.0) 😄"
+echo " Git uploader – smart & enkel hantering (v2.1) 😄"
 echo "=============================="
 echo
 
@@ -64,6 +64,19 @@ set_branch_if_missing() {
     fi
 }
 
+set_user_if_missing() {
+    # Sätt lokal Git-användare om ingen finns
+    if ! git config user.name >/dev/null; then
+        echo -e "${YELLOW}➡️  Ange Git-användarnamn för detta repo:${RESET}"
+        read GITUSER
+        git config user.name "$GITUSER"
+
+        echo -e "${YELLOW}➡️  Ange Git-email för detta repo:${RESET}"
+        read GITEMAIL
+        git config user.email "$GITEMAIL"
+    fi
+}
+
 add_with_preview() {
     echo "📄 Filer som ändrats sedan senaste commit:"
     git status --short
@@ -88,6 +101,8 @@ if [[ "$REPOCHOICE" =~ ^[Nn]y$ ]]; then
         echo "✅ Git-repo initierat."
 
         create_gitignore
+
+        set_user_if_missing   # Sätt användare innan första commit
 
         # Första commit
         git add .
@@ -131,6 +146,7 @@ else
     echo -e "${YELLOW}➡️  Vill du skapa en commit? (j/n): ${RESET}"
     read COMMIT
     if [[ "$COMMIT" =~ ^[Jj]$ ]]; then
+        set_user_if_missing   # Sätt användare innan commit
         read -p "📝 Commit-meddelande: " MESSAGE
         git commit -m "$MESSAGE"
         echo "✅ Commit skapad."
